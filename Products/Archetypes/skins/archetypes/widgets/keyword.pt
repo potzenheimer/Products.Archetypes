@@ -30,7 +30,9 @@
                         allowedKeywords python: context.collectKeywords(fieldName, field.accessor, widget.vocab_source);
                         site_props context/portal_properties/site_properties|nothing;
                         format widget/format | string:select;
-                        allowRolesToAddKeywords site_props/allowRolesToAddKeywords|nothing;">
+                        allowRolesToAddKeywords site_props/allowRolesToAddKeywords|nothing;
+                        selectionview context/@@at_selection_widget;
+                        selection python:selectionview.getSelected(allowedKeywords, contentKeywords);">
                         	
             		<div tal:attributes="id string:$fieldName-tags;"
 					     class="tagsContainer">
@@ -71,7 +73,7 @@
 	                                                name string:${fieldName}_existing_keywords:list;">
 	                                <option value="#" tal:repeat="keyword allowedKeywords"
 	                                    tal:content="keyword" tal:attributes="value keyword;
-	                                    selected python:test(context.unicodeTestIn(keyword, value), 'selected', None)">
+                                        selected python:keyword in selection and 'selected' or None;">
 	                                    An existing tag
 	                                </option>
 	                            </select>
@@ -103,7 +105,7 @@
 	                                        tal:attributes="
 	                                            name string:${fieldName}_existing_keywords:list;
 	                                            id string:${fieldName}_${repeat/keyword/number};
-	                                            checked python:test(context.unicodeTestIn(keyword, value), 'checked', None);
+	                                            checked python:keyword in selection and 'checked' or None;
 	                                            value keyword" />
 	                                    <label 
 	                                        tal:content="keyword"
@@ -140,7 +142,7 @@
 	                                    rows="4"
 	                                    tal:attributes="id string:${fieldName}_keywords;
 	                                                    name string:${fieldName}_keywords:lines;"
-	                                    tal:define="subject python:[item for item in value if not context.unicodeTestIn(item,allowedKeywords)]"
+	                                    tal:define="subject python:[item for item in value if not item in selection]"
 	                                    tal:content="python:'\n'.join(subject)">
 	                                    A new tag
 	                                </textarea>
