@@ -20,8 +20,8 @@ class InlineValidationView(BrowserView):
             instance = self.context
 
         field = instance.getField(fname)
-        if field.type not in SKIP_VALIDATION_FIELDTYPES:        
-            error = field.validate(value, instance, {})
+        if field and field.type not in SKIP_VALIDATION_FIELDTYPES:
+            error = field.validate(value, instance, {}, REQUEST=self.request)
             if isinstance(error, str):
                 error = error.decode('utf', 'replace')
             res['errmsg'] = error or ''

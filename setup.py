@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-version = '1.8.7.dev0'
+version = '1.10.2.dev0'
 
 setup(name='Products.Archetypes',
       version=version,
@@ -47,14 +47,12 @@ setup(name='Products.Archetypes',
           'zope.site',
           'zope.tal',
           'zope.viewlet',
-          'Products.CMFCalendar',
           'Products.CMFCore',
           'Products.CMFDefault',
           'Products.CMFFormController',
           'Products.CMFQuickInstallerTool',
           'Products.DCWorkflow',
           'Products.GenericSetup',
-          'Products.Marshall',
           'Products.MimetypesRegistry>=2.0.3',
           'Products.PlacelessTranslationService',
           'Products.PortalTransforms',

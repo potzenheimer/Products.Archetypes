@@ -1,7 +1,7 @@
 from copy import deepcopy
 from cgi import escape
 from cStringIO import StringIO
-from logging import ERROR
+from logging import ERROR, DEBUG
 from types import ClassType, FileType, StringType, UnicodeType
 
 from zope.contenttype import guess_content_type
@@ -25,6 +25,7 @@ from ExtensionClass import Base
 from OFS.Image import File
 from OFS.Image import Pdata
 from OFS.Image import Image as BaseImage
+from OFS.interfaces import ITraversable
 from ZPublisher.HTTPRequest import FileUpload
 from ZODB.POSException import ConflictError
 
@@ -71,6 +72,7 @@ from Products.Archetypes.BaseUnit import BaseUnit
 from Products.Archetypes.ReferenceEngine import Reference
 from Products.Archetypes.log import log
 from Products.Archetypes.utils import DisplayList
+from Products.Archetypes.utils import IntDisplayList
 from Products.Archetypes.utils import Vocabulary
 from Products.Archetypes.utils import className
 from Products.Archetypes.utils import mapply
@@ -316,7 +318,9 @@ class Field(DefaultLayerContainer):
             errors = {}
         name = self.getName()
         if errors and name in errors:
-            return True
+            # We need to return the original error, otherwise it gets
+            # replaced with whatever we return.
+            return errors[name]
 
         if self.required:
             res = self.validate_required(instance, value, errors)
@@ -422,8 +426,11 @@ class Field(DefaultLayerContainer):
 
     def validate_content_types(self, instance, value, errors):
         """make sure the value's content-type is allowed"""
-        if value == "DELETE_IMAGE" or value is None:
+        if value in ("DELETE_IMAGE", "DELETE_FILE", None, ''):
             return None
+        # plone.app.blob.field.BlobWrapper cannot be imported
+        # at startup due to circular imports
+        from plone.app.blob.field import BlobWrapper
         body = ''
         if isinstance(value, FileType):
             tell = value.tell()
@@ -432,6 +439,14 @@ class Field(DefaultLayerContainer):
             value.seek(tell)
         elif isinstance(value, StringType):
             body = value
+        elif isinstance(value, BlobWrapper) or isinstance(value, File):
+            # get data if value is an instance of BlobWrapper or 
+            # is of OFS.Image.File based
+            body = value.data
+
+        if isinstance(value, (FileType, BlobWrapper)) and body in (None, ''):
+            return None
+
         mtr = getToolByName(instance, 'mimetypes_registry', None)
         if mtr is not None:
             orig_filename = getattr(value, 'filename',
@@ -520,7 +535,11 @@ class Field(DefaultLayerContainer):
                 factory_context = content_instance
                 if factory_context is None:
                     factory_context = self
-                value = DisplayList([(t.value, t.title or t.token) for t in factory(factory_context)])
+                data = [(t.value, t.title or t.token) for t in factory(factory_context)]
+                if data and not isinstance(data[0][0], basestring):
+                    value = IntDisplayList(data)
+                else:
+                    value = DisplayList(data)
 
         if not isinstance(value, DisplayList):
 
@@ -769,6 +788,17 @@ class ObjectField(Field):
             # @@ and at every other possible occurence of an AttributeError?!!
             default = self.getDefault(instance)
             if not kwargs.get('_initializing_', False):
+                msg = "'%s' field missing value " % self.getName()
+
+                if ITraversable.providedBy(instance):
+                    msg += ("on instance '%s'; setting default value." %
+                            '/'.join(instance.getPhysicalPath()))
+                else:
+                    msg += ("on content type '%s' with id '%s'; "
+                            "setting default value." %
+                            (instance.portal_type, instance.id))
+
+                log(msg, level=DEBUG)
                 self.set(instance, default, _initializing_=True, **kwargs)
             return default
 
@@ -1448,6 +1478,17 @@ class TextField(FileField):
         except AttributeError:
             # happens if new Atts are added and not yet stored in the instance
             if not kwargs.get('_initializing_', False):
+                msg = "'%s' field missing value " % self.getName()
+
+                if ITraversable.providedBy(instance):
+                    msg += ("on instance '%s'; setting default value." %
+                            '/'.join(instance.getPhysicalPath()))
+                else:
+                    msg += ("on content type '%s' with id '%s'; "
+                            "setting default value." %
+                            (instance.portal_type, instance.id))
+
+                log(msg, level=DEBUG)
                 self.set(instance, self.getDefault(instance),
                          _initializing_=True, **kwargs)
             value = self._wrapValue(instance, self.getDefault(instance))
@@ -1650,6 +1691,8 @@ class FloatField(ObjectField):
         elif value is not None:
             # should really blow if value is not valid
             __traceback_info__ = (self.getName(), instance, value, kwargs)
+            if isinstance(value, basestring):
+                value = value.replace(',', '.')
             value = float(value)
 
         ObjectField.set(self, instance, value, **kwargs)

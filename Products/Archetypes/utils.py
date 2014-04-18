@@ -8,10 +8,10 @@ from UserDict import UserDict as BaseDict
 
 import transaction
 from zope.component import getUtility
-from zope.i18n import translate
 from zope.i18nmessageid import Message
 
 from AccessControl import ClassSecurityInfo
+from AccessControl import ModuleSecurityInfo
 from AccessControl.SecurityInfo import ACCESS_PUBLIC
 
 from Acquisition import aq_base, aq_inner, aq_parent
@@ -23,6 +23,11 @@ from Products.Archetypes.config import DEBUG_SECURITY
 from Products.statusmessages.interfaces import IStatusMessage
 
 from plone.uuid.interfaces import IUUIDGenerator
+
+security = ModuleSecurityInfo()
+security.declarePrivate('transaction')
+security.declarePrivate('ClassSecurityInfo')
+security.declarePrivate('InitializeClass')
 
 
 def make_uuid(*args):
@@ -45,6 +50,7 @@ def fixSchema(schema):
 _marker = []
 
 
+security.declarePrivate('mapply')
 def mapply(method, *args, **kw):
     """ Inspect function and apply positional and keyword arguments as possible.
 
@@ -241,8 +247,8 @@ class DisplayList:
     """Static display lists, can look up on
     either side of the dict, and get them in sorted order
 
-    NOTE: Both keys and values *must* contain unique entries! You can have
-    two times the same value. This is a "feature" not a bug. DisplayLists
+    NOTE: Both keys and values *must* contain unique entries! You can *not* 
+    have the same value twice. This is a "feature" not a bug. DisplayLists
     are meant to be used as a list inside html form entry like a drop down.
 
     >>> dl = DisplayList()
@@ -350,7 +356,8 @@ class DisplayList:
     def getKey(self, value, default=None):
         """get key"""
         v = self._values.get(value, None)
-        if v: return v[1]
+        if v:
+            return v[1]
         for k, v in self._values.items():
             if repr(value) == repr(k):
                 return v[1]
@@ -362,7 +369,8 @@ class DisplayList:
             raise TypeError('DisplayList keys must be strings, got %s' %
                             type(key))
         v = self._keys.get(key, None)
-        if v: return v[1]
+        if v:
+            return v[1]
         for k, v in self._keys.items():
             if repr(key) == repr(k):
                 return v[1]
@@ -409,7 +417,7 @@ class DisplayList:
 
     def __cmp__(self, dest):
         if not isinstance(dest, DisplayList):
-            raise TypeError, 'Cannot compare DisplayList to %s' % (type(dest))
+            raise TypeError('Cannot compare DisplayList to %s' % (type(dest)))
 
         return cmp(self.sortedByKey()[:], dest.sortedByKey()[:])
 
@@ -501,6 +509,9 @@ class IntDisplayList(DisplayList):
     security = ClassSecurityInfo()
     security.setDefaultAccess('allow')
 
+    def __repr__(self):
+        return '<IntDisplayList %s at %s>' % (self[:], id(self))
+
     def add(self, key, value, msgid=None):
         if not isinstance(key, int):
             raise TypeError('IntDisplayList keys must be ints, got %s' %
@@ -525,7 +536,8 @@ class IntDisplayList(DisplayList):
         else:
             raise TypeError("Key must be string or int")
         v = self._keys.get(key, None)
-        if v: return v[1]
+        if v:
+            return v[1]
         for k, v in self._keys.items():
             if repr(key) == repr(k):
                 return v[1]
@@ -572,17 +584,26 @@ class Vocabulary(DisplayList):
             if isinstance(msg, Message):
                 return msg
 
+            if not isinstance(msg, basestring):
+                # Possibly a marker object, for example None.  Do not touch it.
+                return msg
+
             if not msg:
                 return ''
 
-            return translate(msg, self._i18n_domain,
-                             context=self._instance.REQUEST, default=value)
+            # We used to explicitly translate here, but all other code
+            # paths did not return a translation.  So create a Message
+            # that can be translated elsewhere.
+            if not isinstance(msg, unicode):
+                msg = msg.decode('utf-8')
+            return Message(msg, domain=self._i18n_domain, default=value)
         else:
             return value
 
 InitializeClass(Vocabulary)
 
 
+security.declarePrivate('OrderedDict')
 class OrderedDict(BaseDict):
     """A wrapper around dictionary objects that provides an ordering for
        keys() and items()."""
@@ -646,7 +667,7 @@ class OrderedDict(BaseDict):
 
     def popitem(self):
         if not self.data:
-            raise KeyError, 'dictionary is empty'
+            raise KeyError('dictionary is empty')
         k = self._keys.pop()
         v = self.data.get(k)
         del self.data[k]
@@ -721,10 +742,12 @@ def isWrapperMethod(meth):
     return getattr(meth, WRAPPER, False)
 
 
+security.declarePrivate('call_original')
 def call_original(self, __name__, __pattern__, *args, **kw):
     return getattr(self, __pattern__ % __name__)(*args, **kw)
 
 
+security.declarePrivate('wrap_method')
 def wrap_method(klass, name, method, pattern='__at_wrapped_%s__'):
     old_method = getattr(klass, name)
     if isWrapperMethod(old_method):
@@ -737,10 +760,11 @@ def wrap_method(klass, name, method, pattern='__at_wrapped_%s__'):
     setattr(klass, name, method)
 
 
+security.declarePrivate('unwrap_method')
 def unwrap_method(klass, name):
     old_method = getattr(klass, name)
     if not isWrapperMethod(old_method):
-        raise ValueError, ('Non-wrapped method %s.%s' % (klass.__name__, name))
+        raise ValueError('Non-wrapped method %s.%s' % (klass.__name__, name))
     orig_name = getattr(old_method, ORIG_NAME)
     new_method = getattr(klass, orig_name)
     delattr(klass, orig_name)
@@ -794,6 +818,7 @@ def _getSecurity(klass, create=True):
     return security
 
 
+security.declarePrivate('mergeSecurity')
 def mergeSecurity(klass):
     # This method looks into all the base classes and tries to
     # merge the security declarations into the current class.
@@ -824,6 +849,7 @@ def mergeSecurity(klass):
             security.names[name] = v
 
 
+security.declarePrivate('setSecurity')
 def setSecurity(klass, defaultAccess=None, objectPermission=None):
     """Set security of classes
 

@@ -1,16 +1,162 @@
 Changelog
 =========
 
-1.8.7 (unreleased)
+1.10.2 (unreleased)
+-------------------
+
+- Nothing changed yet.
+
+
+1.10.1 (2014-04-13)
+-------------------
+
+- waking instances is cheaper than processing a potentially huge vocabulary 
+  for getting the title, therefore we handle reference fields seperately
+  [zwork, agitator]
+
+- Remove DL's from portal message templates.
+  https://github.com/plone/Products.CMFPlone/issues/153
+  [khink]
+
+
+1.10.0 (2014-03-01)
+-------------------
+
+- Set logging level to DEBUG for warnings regarding new fields initialized on
+  an existing object. INFO level can seriously spam the logs of a busy portal.
+  [olimpiurob]
+
+- Ported fix for #13833 from the 1.9.x branch for reindexObjectSecurity
+  triggering an error when attempting to change the workflow of an object
+  and it has deleted children
+  [ichim-david]
+
+- Do not use portal_interface tool but @@plone_interface_info (PLIP #13770).
+  [ale-rt]
+
+- Internationalized file size and content type on file and image widgets.
+  (needs Plone>=4.3.3)
+  [thomasdesvenain]
+
+- Make sure @@at_utils.translate method always returns a string (empty or
+  not) even when the passed value is an empty tuple (before, the returned
+  value was an empty tuple or a non empty string).
+  [gbastien]
+
+- Do not add warning about new field initialized on an existing object in
+  the transaction description, show this as a Zope log info message.
+  [gbastien]
+
+- Move calendar_macros, jscalendar, and date_components_support here
+  from CMFPlone and plone.app.form.
+  [bloodbare, davisagli]
+
+- Replace deprecated test assert statements.
+  [timo]
+
+- ``Vocabulary`` method was not working with ``vocabulary_factory``
+  and int values (IntDisplayList is required)
+  [keul]
+
+- Remove code and tests for the old discussion infrastructure
+  (pre plone.app.discussion). The discussion tool will be deprecated in
+  Plone 5.
+  [timo]
+
+- Fix nesting-error in InAndOutWidget. This fixes
+  https://github.com/plone/Products.Archetypes/pull/29
+  [pbauer]
+
+- Return original error during validation when a field already has an
+  error.  This avoids ``TypeError: 'bool' object has no attribute
+  '__getitem__'`` in ``Products.CMFFormController.ControllerState.``
+  [maurits]
+
+- Various vocabulary fixes, mostly for translations and
+  IntDisplayLists.
+  [maurits]
+
+- Make (non-valued) default value selected in select widget if no selection
+  is given. This happens  especially with ReferenceFields.
+  [thepjot]
+
+1.9.4 (2013-08-29)
 ------------------
 
-- Fix issue #7556 (https://dev.plone.org/ticket/7556) by adding 
+- Fixed error of validate_content_types when checking a field that was an
+  instance of OFS.Image.File
+  [ichim-david]
+
+- fix transaction note so long notes do not bork the transaction
+  [vangheem]
+
+
+1.9.3 (2013-08-14)
+------------------
+
+- Avoid UnicodeDecodeError in @@at_utils.translate if the value contains
+  special chars
+  [gbastien]
+
+
+1.9.2 (2013-08-13)
+------------------
+
+- Make some methods of TypesWidget unpublishable.
+  [davisagli]
+
+- Allow commas as decimal marks for inputs in float fields. The comma is then
+  replaced by Python's standard decimal mark, the dot. Commas as separators
+  between the decimal and fractional part are quite common in Central Europe.
+  [rnix]
+
+- Remove UIDResolver's resolve_url and protect UIDCatalogBrains' getObject.
+  Protect ReferenceEngine's getReferences and getBackReferences.
+  Add security declarations to functions in utils.py.
+  (Security fixes from PloneHotfix20130618)
+  [davisagli]
+
+- Pass request to field validation so errors are translated properly.
+  [davisagli]
+
+- Add a transaction note when setting a default value for a field which doesn't
+  have a storage yet
+  [frapell]
+
+
+1.9.1 (2013-05-29)
+------------------
+
+- Fix computed widget, use getParentNode to get the parent object instead of aq_parent,
+  like in field.pt (avoid Unauthorized error)
+  [jfroche]
+
+
+1.9.0 (2013-05-23)
+------------------
+
+- Unmark creation_flag after object rename so we still know that the object
+  is in the creation process in sub methods around the renaming functionnality
+  (setId calls manage_beforeDelete, 'onDelete' event, ...)
+  [gbastien]
+
+1.8.7 (2013-04-06)
+------------------
+
+- Ignore missing file and blob uploads during content_type validation
+  [pjstevns]
+
+- Before validating the field, make sure you actually have the field
+  objects for the type
+  [vangheem]
+
+- Fix issue #7556 (https://dev.plone.org/ticket/7556) by adding
   validation of uploaded blobs by checking the allowable_content_types
   attribute of a field
   [pjstevns]
 
 - Provide fix for issue #9774 (https://dev.plone.org/ticket/9774)
-  change import target and update order params in install_uidcatalog 
+  change import target and update order params in install_uidcatalog
   from setuphandlers has different order params
   [bogdangi]
 
@@ -25,6 +171,9 @@ Changelog
 
 - Don't fail if contenttype can not be acquired (eg PFG)
   [tomgross]
+
+- Translate selection values in base_view, fix #7627 (https://dev.plone.org/ticket/7627)
+  [kiorky]
 
 1.8.6 (2012-12-09)
 ------------------
@@ -77,7 +226,7 @@ Changelog
   trunk compatibility.
   [elro]
 
-- Always add alt to image when shown in file widget 
+- Always add alt to image when shown in file widget
   [maartenkling]
 
 1.8.3 (2012-08-23)
@@ -3338,4 +3487,3 @@ Changelog
 
 * Fixed [ 988898 ] Don't swallow ConflictError (SQL missing)
   [tiran]
-
